@@ -61,10 +61,11 @@ PlayState.preload = function (){
     
     // load audio
     this.game.load.audio("sfx:jump", "audio/jump.wav");
+    this.game.load.audio("sfx:coin", "audio/coin.wav");
     
     // load coin
     this.game.load.spritesheet("coin", "images/coin_animated.png", 22, 22)
-    this.game.load.audio("sfx:coin", "audio/coin.wav");
+    
 };
 
 PlayState.create = function(){
@@ -72,7 +73,7 @@ PlayState.create = function(){
         jump: this.game.add.audio("sfx:jump"),
         coin: this.game.add.audio("sfx:coin")
         
-    }
+    };
     this.game.add.image(0, 0, "background");
     this._loadLevel(this.game.cache.getJSON("level:1"));
     
