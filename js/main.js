@@ -63,16 +63,22 @@ PlayState.preload = function (){
     this.game.load.audio("sfx:jump", "audio/jump.wav");
     
     // load coin
-    this.game.load.spritesheet("coin", "images/coin_animated.png")
+    this.game.load.spritesheet("coin", "images/coin_animated.png", 22, 22)
+    this.game.load.audio("sfx:coin", "audio/coin.wav");
 };
 
 PlayState.create = function(){
+    this.sfx = {
+        jump: this.game.add.audio("sfx:jump"),
+        
+    }
     this.game.add.image(0, 0, "background");
     this._loadLevel(this.game.cache.getJSON("level:1"));
     
     //create sound entities
     this.sfx = {
-        jump: this.game.add.audio("sfx:jump")
+        jump: this.game.add.audio("sfx:jump"),
+        coin: this.game.add.audio("sfx:coin")
     };
 };
 
@@ -83,6 +89,12 @@ PlayState.update = function() {
 
 PlayState._handleCollisions = function () {
     this.game.physics.arcade.collide(this.hero, this.platforms);
+    this.game.physics.arcade.overlap(this.hero, this.coins, this._onHeroVsCoin, null, this
+);
+};
+
+PlayState._onHeroVsCoin = function (hero, coin){
+    coin.kill();
 };
 
 PlayState._handleInput = function(){
@@ -122,8 +134,11 @@ PlayState._loadLevel = function (data){
 PlayState._spawnCoin = function (coin){
     let sprite = this.coins.create(coin.x, coin.y, "coin");
     sprite.anchor.set(0.5, 0.5);
-//    sprite.animations.add("rotate", [0,1,2,1],6, true); //6fps, looped
-//    sprite.animations.play("rotate");
+    sprite.animations.add("rotate", [0,1,2,1],6, true); //6fps, looped
+    sprite.animations.play("rotate");
+    //pickup coins
+    this.game.physics.enable(sprite);
+    sprite.body.allowGravity = false;
 };
 
 PlayState._spawnCharacters = function(data){
