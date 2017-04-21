@@ -61,6 +61,9 @@ PlayState.preload = function (){
     
     // load audio
     this.game.load.audio("sfx:jump", "audio/jump.wav");
+    
+    // load coin
+    this.game.load.spritesheet("coin", "images/coin_animated.png")
 };
 
 PlayState.create = function(){
@@ -99,17 +102,28 @@ PlayState._handleInput = function(){
 PlayState._loadLevel = function (data){
         
     // create all the groups/layers that we need
-    this.platforms = this.game.add.group()
+    this.platforms = this.game.add.group();
+    this.coins = this.game.add.group();
     
     // spawn all platforms
     data.platforms.forEach(this._spawnPlatform, this);
     //spawn hero and enemies
-    this._spawnCharacters({hero: data.hero});
+    this._spawnCharacters({hero: data.hero, spiders: data.spiders});
+    
+    data.coins.forEach(this._spawnCoin, this);
     
     // enable gravity
     const GRAVITY = 1200;
     this.game.physics.arcade.gravity.y = GRAVITY;
+    
+    
+};
 
+PlayState._spawnCoin = function (coin){
+    let sprite = this.coins.create(coin.x, coin.y, "coin");
+    sprite.anchor.set(0.5, 0.5);
+//    sprite.animations.add("rotate", [0,1,2,1],6, true); //6fps, looped
+//    sprite.animations.play("rotate");
 };
 
 PlayState._spawnCharacters = function(data){
