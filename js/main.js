@@ -111,6 +111,7 @@ Spider.prototype.die = function () {
 //*******************
 //States
 //*******************
+
 PlayState = {};
 
 
@@ -129,6 +130,7 @@ PlayState.init = function(){
         }
     }, this);
     this.coinPickupCount = 0;
+    this.hasKey = false;
 };
 
 
@@ -142,10 +144,12 @@ PlayState.preload = function (){
     this.game.load.image("grass:4x1", "images/grass_4x1.png");
     this.game.load.image("grass:2x1", "images/grass_2x1.png");
     this.game.load.image("grass:1x1", "images/grass_1x1.png");
-    this.game.load.image("invisible-wall", "images/invisible_wall.png")
+    this.game.load.image("invisible-wall", "images/invisible_wall.png");
+    this.game.load.image("key", "images/key.png");
     
     this.game.load.image("icon:coin", "images/coin_icon.png");
     this.game.load.image("font:numbers", "images/numbers.png");
+    this.game.load.spritesheet("door", "images/door.png", 42, 66);
     
     
     
@@ -158,11 +162,15 @@ PlayState.preload = function (){
     //load enemy
     this.game.load.spritesheet("spider", 'images/spider.png', 42,32);
     this.game.load.spritesheet("hero", "images/hero.png", 36, 42);
+    this.game.load.audio("sfx:key", "audio/key.wav");
+    this.game.load.audio("sfx:door", "audio/door.wav")
     
 };
 
 PlayState.create = function(){
     this.sfx = {
+        key: this.game.add.audio("sfx:key"),
+        door: this.game.add.audio("sfx:door"),
         jump: this.game.add.audio("sfx:jump"),
         coin: this.game.add.audio("sfx:coin"),
         stomp: this.game.add.audio("sfx:stomp")
@@ -188,8 +196,32 @@ PlayState._handleCollisions = function () {
     this.game.physics.arcade.overlap(this.hero, this.coins, this._onHeroVsCoin, null, this
     );
     this.game.physics.arcade.overlap(this.hero, this.spiders, this._onHeroVsEnemy, null, this);
+    this.game.physics.arcade.overlap(this.hero, this.key, this._onHeroVsKey, null, this)
 };
 
+PlayState._onHeroVsCoin = function (hero, coin){
+    this.sfx.coin.play();
+    coin.kill();
+    this.coinPickupCount++;
+};
+
+PlayState._onHeroVsEnemy = function(hero, enemy){
+    if (hero.body.velocity.y >0){//kill enemies when hero is falling
+        hero.bounce();
+        enemy.die();
+        this.sfx.stomp.play();
+    }
+    else {// game over => restart the game       
+        this.sfx.stomp.play();
+        this.game.state.restart();
+    }
+};
+
+PlayState._onHeroVsKey = function(hero, key){
+    this.sfx.key.play();
+    key.kill();
+    this.hasKey = true;
+}
 
 PlayState._handleInput = function(){
         if (this.keys.left.isDown) { // move hero left
@@ -205,10 +237,10 @@ PlayState._handleInput = function(){
 };
 
 PlayState._loadLevel = function (data){
-        
+    this.bgDecoration = this.game.add.group();
     // create all the groups/layers that we need
     this.platforms = this.game.add.group();
-    this.coins = this.game.add.group();
+    this.coins = this.game.add.group();    
     this.spiders = this.game.add.group();
     this.enemyWalls = this.game.add.group();
     this.enemyWalls.visible = false;
@@ -219,6 +251,8 @@ PlayState._loadLevel = function (data){
     
     
     data.coins.forEach(this._spawnCoin, this);
+    this._spawnDoor(data.door.x, data.door.y);
+    this._spawnKey(data.key.x, data.key.y);
     
     // enable gravity
     const GRAVITY = 1200;
@@ -272,23 +306,20 @@ PlayState._spawnEnemyWall = function(x, y, side){
     sprite.body.allowGravity = false;
 };
 
-PlayState._onHeroVsCoin = function (hero, coin){
-    this.sfx.coin.play();
-    coin.kill();
-    this.coinPickupCount++;
+PlayState._spawnDoor = function(x, y){
+    this.door = this.bgDecoration.create(x, y, "door");
+    this.door.anchor.setTo(0.5, 1);
+    this.game.physics.enable(this.door);
+    this.door.body.allowGravity = false;
 };
 
-PlayState._onHeroVsEnemy = function(hero, enemy){
-    if (hero.body.velocity.y >0){//kill enemies when hero is falling
-        hero.bounce();
-        enemy.die();
-        this.sfx.stomp.play();
-    }
-    else {// game over => restart the game       
-        this.sfx.stomp.play();
-        this.game.state.restart();
-    }
+PlayState._spawnKey= function(x, y){
+    this.key = this.bgDecoration.create(x, y, "key");
+    this.key.anchor.set(0.5, 0.5);
+    this.game.physics.enable(this.key);
+    this.key.body.allowGravity = false;
 };
+
 
 PlayState._createHud = function(){
     const NUMBERS_STR = "0123456789X ";
