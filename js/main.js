@@ -8,7 +8,7 @@ function Hero (game, x, y){
     
     this.animations.add("stop",[0] );
     this.animations.add("run", [1,2], 8, true ); //8fps looped
-    this.animations.add("stop", [3]);
+    this.animations.add("jump", [3]);
     this.animations.add("fall", [4]);
 }
 //inherit from Phaser.Sprite
@@ -18,12 +18,14 @@ Hero.prototype.constructor = Hero;
 Hero.prototype.move = function(direction){
     const SPEED = 200; 
     this.body.velocity.x = direction * SPEED;
-    if(this.body.x < 0){
+    if(this.body.velocity.x < 0){
         this.scale.x = -1;
     }
     else if (this.body.velocity.x > 0){
         this.scale.x = 1;
     }
+    
+    
 };
 
 Hero.prototype.jump = function(){
