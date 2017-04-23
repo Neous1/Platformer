@@ -24,8 +24,6 @@ Hero.prototype.move = function(direction){
     else if (this.body.velocity.x > 0){
         this.scale.x = 1;
     }
-    
-    
 };
 
 Hero.prototype.jump = function(){
@@ -41,6 +39,14 @@ Hero.prototype.jump = function(){
 Hero.prototype.bounce = function(){
     const BOUNCE_SPEED = 200;
     this.body.velocity.y = -BOUNCE_SPEED;
+};
+
+Hero.prototype.update = function(){
+    // update sprite animation, if it needs changing
+    let animationName = this._getAnimationName();
+    if(this.animations.name !== animationName){
+        this.animations.play(animationName);
+    }
 };
 
 Hero.prototype._getAnimationName = function(){
@@ -60,13 +66,7 @@ Hero.prototype._getAnimationName = function(){
     return name;
 };
 
-Hero.prototype.update = function(){
-    // update sprite animation, if it needs changing
-    let animationName = this._getAnimationName();
-    if(this.animations.name !== animationName){
-        this.animations.play(animationName);
-    }
-};
+
 // ********************
 // Spiders
 // ********************
@@ -116,9 +116,8 @@ Spider.prototype.die = function () {
 
 PlayState = {};
 
-
 PlayState.init = function(){
-    this.game.renderer.renderSession.rounPixels = true;
+    this.game.renderer.renderSession.roundPixels = true;
     this.keys = this.game.input.keyboard.addKeys({
         left: Phaser.KeyCode.LEFT,
         right: Phaser.KeyCode.RIGHT,
@@ -135,9 +134,10 @@ PlayState.init = function(){
     this.hasKey = false;
 };
 
-
 PlayState.preload = function (){
     this.game.load.json("level:1", "data/level01.json");
+    
+    this.game.load.image("font:numbers", "images/numbers.png");
 
     this.game.load.image("background", "images/background.png");
     this.game.load.image("ground", "images/ground.png");
@@ -147,27 +147,19 @@ PlayState.preload = function (){
     this.game.load.image("grass:2x1", "images/grass_2x1.png");
     this.game.load.image("grass:1x1", "images/grass_1x1.png");
     this.game.load.image("invisible-wall", "images/invisible_wall.png");
-    this.game.load.image("key", "images/key.png");
-    
     this.game.load.image("icon:coin", "images/coin_icon.png");
-    this.game.load.image("font:numbers", "images/numbers.png");
-
-        
+    this.game.load.image("key", "images/key.png");   
+    
+    this.game.load.spritesheet("coin", "images/coin_animated.png", 22, 22)
+    this.game.load.spritesheet("spider", 'images/spider.png', 42,32);
+    this.game.load.spritesheet("hero", "images/hero.png", 36, 42);
+    this.game.load.spritesheet("door", "images/door.png", 42, 66);
+    this.game.load.spritesheet("icon:key", "images/key_icon.png", 34, 30);
     
     // load audio
     this.game.load.audio("sfx:jump", "audio/jump.wav");
     this.game.load.audio("sfx:coin", "audio/coin.wav");
     this.game.load.audio("sfx:stomp", "audio/stomp.wav");
-    
-    // load coin
-    this.game.load.spritesheet("coin", "images/coin_animated.png", 22, 22)
-    
-    this.game.load.spritesheet("door", "images/door.png", 42, 66);
-    this.game.load.spritesheet("icon:key", "images/key_icon.png", 34, 30);
-        
-    //load enemy
-    this.game.load.spritesheet("spider", 'images/spider.png', 42,32);
-    this.game.load.spritesheet("hero", "images/hero.png", 36, 42);
     this.game.load.audio("sfx:key", "audio/key.wav");
     this.game.load.audio("sfx:door", "audio/door.wav")
     
@@ -182,8 +174,11 @@ PlayState.create = function(){
         stomp: this.game.add.audio("sfx:stomp")
         
     };
+    //create level
     this.game.add.image(0, 0, "background");
     this._loadLevel(this.game.cache.getJSON("level:1"));
+    
+    //create hud with scoreboards
     this._createHud();
     
 
@@ -193,7 +188,7 @@ PlayState.update = function() {
     this._handleCollisions();
     this._handleInput();
     this.coinFont.text = `x${this.coinPickupCount}`;
-    this.keyIcon.frame = this.haskey ? 1 : 0;
+    this.keyIcon.frame = this.hasKey ? 1 : 0;
 };
 
 PlayState._handleCollisions = function () {    
@@ -221,37 +216,6 @@ PlayState._handleInput = function(){
     else { // stop
         this.hero.move(0);
     }
-
-};
-
-PlayState._onHeroVsCoin = function (hero, coin){
-    this.sfx.coin.play();
-    coin.kill();
-    this.coinPickupCount++;
-};
-
-PlayState._onHeroVsEnemy = function(hero, enemy){
-    if (hero.body.velocity.y >0){//kill enemies when hero is falling
-        hero.bounce();      
-        enemy.die();
-        this.sfx.stomp.play();
-    }
-    else {// game over => restart the game       
-        this.sfx.stomp.play();
-        this.game.state.restart();
-    }
-};
-
-PlayState._onHeroVsKey = function(hero, key){
-    this.sfx.key.play();
-    key.kill();
-    this.hasKey = true;
-}
-
-PlayState._onHeroVsDoor = function(hero, door){
-    this.sfx.door.play();
-    this.game.state.restart();
-    // TODO: go to the next level instead
 };
 
 PlayState._loadLevel = function (data){
@@ -275,7 +239,6 @@ PlayState._loadLevel = function (data){
     // enable gravity
     const GRAVITY = 1200;
     this.game.physics.arcade.gravity.y = GRAVITY;
-       
 };
 
 PlayState._spawnPlatform = function (platform) {
@@ -289,6 +252,17 @@ PlayState._spawnPlatform = function (platform) {
     //creat walls
     this._spawnEnemyWall(platform.x, platform.y, "left");
     this._spawnEnemyWall(platform.x + sprite.width, platform.y, "right");
+};
+
+PlayState._spawnEnemyWall = function(x, y, side){
+    let sprite = this.enemyWalls.create(x, y, "invisible-wall");
+    //anchor and y displacement
+    sprite.anchor.set(side === "left" ? 1: 0, 1);
+    
+    //physic properties
+    this.game.physics.enable(sprite);
+    sprite.body.immovable = true;
+    sprite.body.allowGravity = false;
 };
 
 PlayState._spawnCharacters = function(data){
@@ -313,16 +287,7 @@ PlayState._spawnCoin = function (coin){
     sprite.body.allowGravity = false;
 };
 
-PlayState._spawnEnemyWall = function(x, y, side){
-    let sprite = this.enemyWalls.create(x, y, "invisible-wall");
-    //anchor and y displacement
-    sprite.anchor.set(side === "left" ? 1: 0, 1);
-    
-    //physic properties
-    this.game.physics.enable(sprite);
-    sprite.body.immovable = true;
-    sprite.body.allowGravity = false;
-};
+
 
 PlayState._spawnDoor = function(x, y){
     this.door = this.bgDecoration.create(x, y, "door");
@@ -345,7 +310,35 @@ PlayState._spawnKey= function(x, y){
         .start();
 };
 
+PlayState._onHeroVsCoin = function (hero, coin){
+    this.sfx.coin.play();
+    coin.kill();
+    this.coinPickupCount++;
+};
 
+PlayState._onHeroVsEnemy = function(hero, enemy){
+    if (hero.body.velocity.y >0){//kill enemies when hero is falling
+        hero.bounce();      
+        enemy.die();
+        this.sfx.stomp.play();
+    }
+    else {// game over => restart the game       
+        this.sfx.stomp.play();
+        this.game.state.restart();
+    }
+};
+
+PlayState._onHeroVsKey = function(hero, key){
+    this.sfx.key.play();
+    key.kill();
+    this.hasKey = true;
+};
+
+PlayState._onHeroVsDoor = function(hero, door){
+    this.sfx.door.play();
+    this.game.state.restart();
+    // TODO: go to the next level instead
+};
 PlayState._createHud = function(){
     const NUMBERS_STR = "0123456789X ";
     this.coinFont = this.game.add.retroFont("font:numbers", 20, 26, NUMBERS_STR, 6)
