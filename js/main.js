@@ -149,16 +149,20 @@ PlayState.preload = function (){
     
     this.game.load.image("icon:coin", "images/coin_icon.png");
     this.game.load.image("font:numbers", "images/numbers.png");
-    this.game.load.spritesheet("door", "images/door.png", 42, 66);
-    
-    
+
+        
     
     // load audio
     this.game.load.audio("sfx:jump", "audio/jump.wav");
     this.game.load.audio("sfx:coin", "audio/coin.wav");
     this.game.load.audio("sfx:stomp", "audio/stomp.wav");
+    
     // load coin
     this.game.load.spritesheet("coin", "images/coin_animated.png", 22, 22)
+    
+    this.game.load.spritesheet("door", "images/door.png", 42, 66);
+    this.game.load.spritesheet("icon:key", "images/key_icon.png", 34, 30);
+        
     //load enemy
     this.game.load.spritesheet("spider", 'images/spider.png', 42,32);
     this.game.load.spritesheet("hero", "images/hero.png", 36, 42);
@@ -187,6 +191,7 @@ PlayState.update = function() {
     this._handleCollisions();
     this._handleInput();
     this.coinFont.text = `x${this.coinPickupCount}`;
+    this.keyIcon.frame = this.haskey ? 1 : 0;
 };
 
 PlayState._handleCollisions = function () {    
@@ -196,7 +201,25 @@ PlayState._handleCollisions = function () {
     this.game.physics.arcade.overlap(this.hero, this.coins, this._onHeroVsCoin, null, this
     );
     this.game.physics.arcade.overlap(this.hero, this.spiders, this._onHeroVsEnemy, null, this);
-    this.game.physics.arcade.overlap(this.hero, this.key, this._onHeroVsKey, null, this)
+    this.game.physics.arcade.overlap(this.hero, this.key, this._onHeroVsKey, null, this);
+    this.game.physics.arcade.overlap(this.hero, this.door, this._onHeroVsDoor,
+        // ignore if there is no key or the player is on air
+        function (hero, door) {
+            return this.hasKey && hero.body.touching.down;
+        }, this);
+};
+
+PlayState._handleInput = function(){
+        if (this.keys.left.isDown) { // move hero left
+        this.hero.move(-1);
+    }
+    else if (this.keys.right.isDown) {  // move hero right
+        this.hero.move(1);
+    }
+    else { // stop
+        this.hero.move(0);
+    }
+
 };
 
 PlayState._onHeroVsCoin = function (hero, coin){
@@ -207,7 +230,7 @@ PlayState._onHeroVsCoin = function (hero, coin){
 
 PlayState._onHeroVsEnemy = function(hero, enemy){
     if (hero.body.velocity.y >0){//kill enemies when hero is falling
-        hero.bounce();
+        hero.bounce();      
         enemy.die();
         this.sfx.stomp.play();
     }
@@ -223,17 +246,10 @@ PlayState._onHeroVsKey = function(hero, key){
     this.hasKey = true;
 }
 
-PlayState._handleInput = function(){
-        if (this.keys.left.isDown) { // move hero left
-        this.hero.move(-1);
-    }
-    else if (this.keys.right.isDown) {  // move hero right
-        this.hero.move(1);
-    }
-    else { // stop
-        this.hero.move(0);
-    }
-
+PlayState._onHeroVsDoor = function(hero, door){
+    this.sfx.door.play();
+    this.game.state.restart();
+    // TODO: go to the next level instead
 };
 
 PlayState._loadLevel = function (data){
@@ -257,9 +273,9 @@ PlayState._loadLevel = function (data){
     // enable gravity
     const GRAVITY = 1200;
     this.game.physics.arcade.gravity.y = GRAVITY;
-    
-    
+       
 };
+
 PlayState._spawnPlatform = function (platform) {
     let sprite = this.platforms.create(
         platform.x, platform.y, platform.image);
@@ -318,13 +334,23 @@ PlayState._spawnKey= function(x, y){
     this.key.anchor.set(0.5, 0.5);
     this.game.physics.enable(this.key);
     this.key.body.allowGravity = false;
+    
+    this.key.y -= 3;
+    this.game.add.tween(this.key)
+        .to({y: this.key.y +6}, 800, Phaser.Easing.Sinusoidal.InOut)
+        .yoyo(true)
+        .loop()
+        .start();
 };
 
 
 PlayState._createHud = function(){
     const NUMBERS_STR = "0123456789X ";
     this.coinFont = this.game.add.retroFont("font:numbers", 20, 26, NUMBERS_STR, 6)
-    let coinIcon = this.game.make.image (0, 0 ,"icon:coin");
+    
+    this.keyIcon = this.game.make.image(0, 19, "icon:key");
+    this.keyIcon.anchor.set(0, 0.5);
+    let coinIcon = this.game.make.image(this.keyIcon.width + 7, 0, "icon:coin");
     let coinScoreImg = this.game.make.image(coinIcon.x + coinIcon.width, coinIcon.height/2, this.coinFont);
     coinScoreImg.anchor.set(0, 0.5);
     
@@ -332,6 +358,8 @@ PlayState._createHud = function(){
     this.hud.add(coinIcon);
     this.hud.position.set(10, 10);
     this.hud.add(coinScoreImg);
+    this.hud.add(this.keyIcon);    
+    
 };
 
 window.onload = function (){
